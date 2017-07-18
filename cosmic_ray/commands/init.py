@@ -1,6 +1,8 @@
 import logging
 import uuid
 
+from spor.cli import find_metadata
+
 import cosmic_ray.modules
 from cosmic_ray.work_record import WorkRecord
 
@@ -33,7 +35,14 @@ def init(modules,
             job_id=uuid.uuid4().hex,
             module=module.__name__,
             operator=opname,
-            occurrence=occurrence)
-        for module, ops in counts.items()
-        for opname, count in ops.items()
+            occurrence=occurrence,
+            filename=module.__file__,
+            line_number=line_number,
+            col_offset=col_offset)
+        for module, opname, count, line_number, col_offset in counts
         for occurrence in range(count))
+
+    # for rec in work_db.work_records:
+    #     for md in find_metadata(rec.filename):
+    #         if rec.line_number == md.line_number:
+    #             print(md, md.metadata)

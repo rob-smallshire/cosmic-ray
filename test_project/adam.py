@@ -125,3 +125,7 @@ def decorated_func():
         result = True
 
     return result
+
+
+if __name__ == '__main__':
+    x = 3
