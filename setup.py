@@ -70,6 +70,7 @@ INSTALL_REQUIRES = [
     'nose',
     'pathlib',
     'pytest>=3.0',
+    'spor',
     'stevedore',
     'tinydb>=3.2.1',
     'transducer',
@@ -123,6 +124,9 @@ setup(
             'pytest = cosmic_ray.testing.pytest_runner:PytestRunner',
         ],
         'cosmic_ray.operators': operators,
+        'cosmic_ray.interceptors': [
+            'spor = cosmic_ray.interceptors.spor:intercept'
+        ]
     },
     long_description=long_description,
 )

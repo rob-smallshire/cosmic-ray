@@ -1,11 +1,10 @@
 import logging
 import uuid
 
-from spor.cli import find_metadata
 
 import cosmic_ray.modules
 from cosmic_ray.parsing import get_ast
-from cosmic_ray.plugins import get_operator
+from cosmic_ray.plugins import get_interceptor, get_operator, interceptor_names
 from cosmic_ray.worker import WorkerOutcome
 from cosmic_ray.work_record import WorkRecord
 from cosmic_ray.util import get_col_offset, get_line_number
@@ -64,13 +63,10 @@ def init(modules,
             op = get_operator(op_name)(core)
             op.visit(mod_ast)
 
-    intercept(work_db)
+    apply_interceptors(work_db)
 
 
-def intercept(work_db):
-    for rec in work_db.work_records:
-        for md in find_metadata(rec.filename):
-            if rec.line_number == md.line_number:
-                rec.worker_outcome = WorkerOutcome.SKIPPED
-                LOG.info('skipping {}'.format(rec))
-                work_db.update_work_record(rec)
+def apply_interceptors(work_db):
+    for name in interceptor_names():
+        interceptor = get_interceptor(name)
+        interceptor(work_db)

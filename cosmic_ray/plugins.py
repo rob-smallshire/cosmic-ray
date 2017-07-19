@@ -33,3 +33,19 @@ def get_test_runner(name, test_args):
 def test_runner_names():
     """Get iterable of test-runner plugin names."""
     return ExtensionManager('cosmic_ray.test_runners').names()
+
+
+def get_interceptor(name):
+    """Get an interceptor by name.
+
+    Attrs:
+        name: The name of the plugin containing the interceptor.
+
+    Returns: A callable object which must accept a single `WorkDB` argument.
+    """
+    return ExtensionManager('cosmic_ray.interceptors')[name].plugin
+
+
+def interceptor_names():
+    """Get an iterable of all interceptor plugin names."""
+    return ExtensionManager('cosmic_ray.interceptors').names()
