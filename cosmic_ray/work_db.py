@@ -135,13 +135,13 @@ class WorkDB:
         return (WorkRecord(r) for r in self._work_items.all())
 
     def update_work_record(self, work_record):
-        """Updates an existing WorkRecord by job_id.
+        """Updates an existing WorkRecord.
 
         Args:
             work_record: A WorkRecord representing the new state of a job.
 
         Raises:
-          KeyError: If there is no existing record with the same job_id.
+            KeyError: If there is no existing record with the same job_id.
         """
         self._work_items.update(
             work_record,
