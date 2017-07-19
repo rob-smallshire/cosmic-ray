@@ -1,0 +1,8 @@
+filename: adam.py
+line_number: 130
+context:
+  before:
+  line: "if __name__ == '__main__':"
+  after:
+metadata:
+  mutate: False

@@ -1,0 +1,8 @@
+filename: adam.py
+line_number: 131
+context:
+  before:
+  line: "    x = 3"
+  after:
+metadata:
+  mutate: False
