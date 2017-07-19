@@ -12,10 +12,12 @@ def _print_item(work_record, full_report):
     if outcome in [WorkerOutcome.NORMAL, WorkerOutcome.EXCEPTION]:
         outcome = work_record.test_outcome
     ret_val = [
-        'job ID {}:{}:{}'.format(
+        'job ID {}:{}:{}:{}:{}'.format(
             work_record.job_id,
             outcome,
-            work_record.module),
+            work_record.module,
+            work_record.line_number,
+            work_record.col_offset),
         'command: {}'.format(
             ' '.join(work_record.command_line)
             if work_record.command_line is not None else ''),
@@ -27,6 +29,8 @@ def _print_item(work_record, full_report):
             ret_val.append("timeout: {:.3f} sec".format(data))
         else:
             ret_val = []
+    elif outcome == WorkerOutcome.SKIPPED and not full_report:
+        ret_val = []
     elif work_record.worker_outcome in [WorkerOutcome.NORMAL, WorkerOutcome.EXCEPTION]:
         ret_val += data
         ret_val += work_record.diff
@@ -40,6 +44,8 @@ def _print_item(work_record, full_report):
 
 def is_killed(record):
     if record.worker_outcome == WorkerOutcome.TIMEOUT:
+        return True
+    elif record.worker_outcome == WorkerOutcome.SKIPPED:
         return True
     elif record.worker_outcome == WorkerOutcome.NORMAL:
         if record.test_outcome == TestOutcome.KILLED:
