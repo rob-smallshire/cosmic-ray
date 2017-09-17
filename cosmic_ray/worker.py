@@ -4,17 +4,13 @@ A worker is intended to run as a process that imports a module, mutates it in
 one location with one operator, runs the tests, reports the results, and dies.
 """
 
-import astunparse
 import difflib
 import importlib
-import inspect
 import logging
 import sys
 import traceback
 
-from .importing import preserve_modules, using_ast
-from .mutating import MutatingCore
-from .parsing import get_ast
+from .importing import preserve_modules, using_mutant
 from .testing.test_runner import TestOutcome
 from .work_record import WorkRecord
 
@@ -62,46 +58,34 @@ def worker(module_name,
 
     """
     try:
-        with preserve_modules():
-            module = importlib.import_module(module_name)
-            module_source_file = inspect.getsourcefile(module)
-            module_ast = get_ast(module)
-            module_source = astunparse.unparse(module_ast)
-
-            core = MutatingCore(occurrence)
-            operator = operator_class(core)
-            # note: after this step module_ast and modified_ast
-            # appear to be the same
-            modified_ast = operator.visit(module_ast)
-            modified_source = astunparse.unparse(modified_ast)
-
-            if not core.activation_record:
+        with using_mutant(module_name, operator_class, occurrence) as context:
+            work_record = test_runner()
+            if not context.activation_record:
                 return WorkRecord(
                     worker_outcome=WorkerOutcome.NO_TEST)
 
-            # generate a source diff to visualize how the mutation
-            # operator has changed the code
-            module_diff = ["--- mutation diff ---"]
-            for line in difflib.unified_diff(
-                            module_source.split('\n'),
-                            modified_source.split('\n'),
-                            fromfile="a" + module_source_file,
-                            tofile="b" + module_source_file,
-                            lineterm=""):
-                module_diff.append(line)
+            work_record.update({
+                'diff': generate_diff(context),
+                'worker_outcome': WorkerOutcome.NORMAL
+            })
 
-        with using_ast(module_name, module_ast):
-            rec = test_runner()
-
-        rec.update({
-            'diff': module_diff,
-            'worker_outcome': WorkerOutcome.NORMAL
-        })
-        rec.update(core.activation_record)
-        return rec
+            work_record.update(context.activation_record)
+            return work_record
 
     except Exception:  # noqa
         return WorkRecord(
             data=traceback.format_exception(*sys.exc_info()),
             test_outcome=TestOutcome.INCOMPETENT,
             worker_outcome=WorkerOutcome.EXCEPTION)
+
+
+def generate_diff(context):
+    module_diff = ["--- mutation diff ---"]
+    for line in difflib.unified_diff(
+            context.module_source.split('\n'),
+            context.modified_source.split('\n'),
+            fromfile="a" + context.module_source_file,
+            tofile="b" + context.module_source_file,
+            lineterm=""):
+        module_diff.append(line)
+    return module_diff

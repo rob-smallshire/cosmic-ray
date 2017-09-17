@@ -1,9 +1,44 @@
 """Functionality related to Python's import mechanisms."""
 
+import astunparse
 import contextlib
+import importlib
 from importlib.abc import MetaPathFinder
 from importlib.machinery import ModuleSpec
+import inspect
 import sys
+
+from .mutating import MutatingCore
+from .parsing import get_ast
+
+
+class Context:
+    def __init__(self, module_name, operator_class, occurrence):
+        self.module_name = module_name
+        self.operator_class = operator_class
+        self.occurrence = occurrence
+        self.core = MutatingCore(self.occurrence)
+        self.module_source_file = None
+        self.module_source = None
+        self.modified_source = None
+        self.modified_ast = None
+
+    def generate_ast(self):
+        module = importlib.import_module(self.module_name)
+        self.module_source_file = inspect.getsourcefile(module)
+        module_ast = get_ast(module)
+        module.module_source = astunparse.unparse(module_ast)
+
+        self.core = MutatingCore(self.occurrence)
+        operator = self._operator_class(self.core)
+        # note: after this step module_ast and modified_ast
+        # appear to be the same
+        self.modified_ast = operator.visit(module_ast)
+        self.modified_source = astunparse.unparse(self.modified_ast)
+
+    @property
+    def activation_record(self):
+        return self.core.activation_record
 
 
 class ASTLoader:  # pylint:disable=old-style-class,too-few-public-methods
@@ -18,16 +53,17 @@ class ASTLoader:  # pylint:disable=old-style-class,too-few-public-methods
     In practice, this is how cosmic-ray loads mutated ASTs for modules.
     """
 
-    def __init__(self, ast, name):
-        self._ast = ast
-        self._name = name
+    def __init__(self, context):
+        self.context = context
 
     def create_module(self, spec):
         return None
 
     def exec_module(self, mod):
-        exec(compile(self._ast, self._name, 'exec'),  # pylint:disable=exec-used
-             mod.__dict__)
+        with preserve_modules():
+            self.context.mutate()
+            exec(compile(self.context.modified_ast, self.context.module_name, 'exec'),  # pylint:disable=exec-used
+                 mod.__dict__)
 
 
 class ASTFinder(MetaPathFinder):  # pylint:disable=too-few-public-methods
@@ -43,14 +79,12 @@ class ASTFinder(MetaPathFinder):  # pylint:disable=too-few-public-methods
     We use this to inject mutated ASTs into tests.
     """
 
-    def __init__(self, fullname, ast):
-        self._fullname = fullname
-        self._ast = ast
+    def __init__(self, loader):
+        self._loader = loader
 
     def find_spec(self, fullname, path, target=None):  # pylint:disable=unused-argument
-        if fullname == self._fullname:
-            return ModuleSpec(fullname,
-                              ASTLoader(self._ast, fullname))
+        if fullname == self._loader._name:
+            return ModuleSpec(fullname, self._loader)
         else:
             return None
 
@@ -69,7 +103,7 @@ def preserve_modules():
 
 
 @contextlib.contextmanager
-def using_ast(module_name, module_ast):
+def using_mutant(module_name, operator_class, occurrence):
     """Create a new Finder as a context-manager.
 
     This creates a new Finder which loads the AST `module_ast` when
@@ -82,9 +116,11 @@ def using_ast(module_name, module_ast):
     before running this (e.g. with `preserve_modules()` or something similar).
 
     """
-    finder = ASTFinder(module_name, module_ast)
+    context = Context(module_name, operator_class, occurrence)
+    loader = ASTLoader(context)
+    finder = ASTFinder(loader)
     sys.meta_path = [finder] + sys.meta_path
     try:
-        yield finder
+        yield context
     finally:
         sys.meta_path.remove(finder)
