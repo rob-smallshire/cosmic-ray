@@ -50,6 +50,6 @@ def count_mutants(modules, operators):
                 ((op, _count(mod_ast, op))
                  for op in operators)))
         for (mod, mod_ast)
-        in ((m, get_ast(m))
+        in ((m, get_ast(m.__file__)[1])
             for m in modules)
     }
