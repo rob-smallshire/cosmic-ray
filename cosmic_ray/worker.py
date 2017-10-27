@@ -5,12 +5,11 @@ one location with one operator, runs the tests, reports the results, and dies.
 """
 
 import difflib
-import importlib
 import logging
 import sys
 import traceback
 
-from .importing import preserve_modules, using_mutant
+from .importing import using_mutant
 from .testing.test_runner import TestOutcome
 from .work_record import WorkRecord
 
