@@ -26,6 +26,8 @@ class PytestRunner(TestRunner):
     def _run(self):
         collector = ResultCollector()
 
+        # TODO: Should we uniformly redirect stdout for all test runners? It
+        # seems a bit odd to have this special handling.
         with open(os.devnull, 'w') as devnull, redirect_stdout(devnull):
             pytest.main(self.test_args.split(),
                         plugins=[collector])

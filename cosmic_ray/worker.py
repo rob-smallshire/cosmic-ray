@@ -57,6 +57,8 @@ def worker(module_name,
 
     """
     try:
+        #  TODO: Is it necessary to use preserve_modules() here? Or should it
+        #  be done at a higher level?
         with using_mutant(module_name, operator_class, occurrence) as context:
             work_record = test_runner()
             if not context.activation_record:
